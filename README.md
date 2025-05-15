@@ -15,6 +15,7 @@ This project implements an **ensemble of autoencoders** to detect anomalies and 
 
 ## 📁 Project Structure
 ensemble-autoencoder-anomaly/
+
 ├── model.py # Main training and testing code
 
 ├── requirements.txt # Python dependencies
