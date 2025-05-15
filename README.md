@@ -16,16 +16,18 @@ This project implements an **ensemble of autoencoders** to detect anomalies and 
 ## 📁 Project Structure
 ensemble-autoencoder-anomaly/
 ├── model.py # Main training and testing code
+
 ├── requirements.txt # Python dependencies
+
 └── README.md # Project description
 
 ## 🚀 How to Run
 
 1. Clone the repo:
-```bash
+    ```bash
     git clone https://github.com/DomiGames/ensemble-autoencoder-anomaly.git
     cd ensemble-autoencoder-anomaly
-```
+    ```
 
 2. Create a virtual environment (optional):
    ```bash
