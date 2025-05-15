@@ -50,7 +50,9 @@ ensemble-autoencoder-anomaly/
 After running the model, you will see an output similar to this:
 
 markdown
+
 Copy
+
 Edit
               precision    recall  f1-score   support
 
