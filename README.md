@@ -49,11 +49,6 @@ ensemble-autoencoder-anomaly/
 📊 Model Performance and Output Explanation
 After running the model, you will see an output similar to this:
 
-markdown
-
-Copy
-
-Edit
               precision    recall  f1-score   support
 
           Normal       1.00      0.93      0.96       307
