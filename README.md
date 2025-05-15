@@ -54,12 +54,12 @@ Copy
 Edit
               precision    recall  f1-score   support
 
-      Normal       1.00      0.93      0.96       307
-     Anomaly       0.51      1.00      0.68        23
+          Normal       1.00      0.93      0.96       307
+         Anomaly       0.51      1.00      0.68        23
 
-    accuracy                           0.93       330
-   macro avg       0.76      0.96      0.82       330
-weighted avg       0.97      0.93      0.94       330
+        accuracy                           0.93       330
+       macro avg       0.76      0.96      0.82       330
+    weighted avg       0.97      0.93      0.94       330
 
 What does this mean?
 Precision: Of all samples the model predicted as a certain class, how many were correct?
