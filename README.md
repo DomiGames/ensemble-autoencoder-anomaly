@@ -49,7 +49,7 @@ ensemble-autoencoder-anomaly/
 📊 Model Performance and Output Explanation
 After running the model, you will see an output similar to this:
 
-              precision    recall  f1-score   support
+                    precision   recall  f1-score   support
 
           Normal       1.00      0.93      0.96       307
          Anomaly       0.51      1.00      0.68        23
