@@ -43,7 +43,7 @@ ensemble-autoencoder-anomaly/
 
 5. Run the model:
     ```bash
-    python model.py
+    python3 model.py
     ```
 
 
