@@ -2,105 +2,107 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 
+# Set seed for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
 
-# Sample dataset loader (replace with your real dataset)
-def load_data():
-    # Simulate with synthetic data: 0=normal, 1=anomaly
-    X_normal = np.random.normal(0, 1, (1000, 20))
-    X_anomaly = np.random.normal(4, 1, (100, 20))
-    X = np.vstack([X_normal, X_anomaly])
-    y = np.array([0]*1000 + [1]*100)
-    
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
-    return train_test_split(X, y, test_size=0.3, random_state=42), scaler
+# Load the dataset
+df = pd.read_csv("creditcard.csv")
 
+# Separate features and labels
+X = df.drop(columns=["Class"])
+y = df["Class"]
 
-# Autoencoder Model
+# Normalize features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Split data
+X_train_full, X_test, y_train_full, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+# Train only on normal (non-fraudulent) data
+X_train = X_train_full[y_train_full == 0]
+y_train = y_train_full[y_train_full == 0]
+
+# Convert to PyTorch tensors
+X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+
+# Autoencoder class
 class Autoencoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
-        super().__init__()
+    def __init__(self, input_dim):
+        super(Autoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
+            nn.Linear(input_dim, 14),
+            nn.ReLU(),
+            nn.Linear(14, 7),
             nn.ReLU()
         )
         self.decoder = nn.Sequential(
-            nn.Linear(hidden_dim, input_dim),
-            nn.ReLU()
+            nn.Linear(7, 14),
+            nn.ReLU(),
+            nn.Linear(14, input_dim)
         )
 
     def forward(self, x):
         encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return decoded
+        return self.decoder(encoded)
 
-
-# Train one autoencoder on only normal data
-def train_autoencoder(X_train, input_dim, hidden_dim=10, epochs=50):
-    model = Autoencoder(input_dim, hidden_dim)
+# Train a single autoencoder
+def train_autoencoder(model, data, epochs=10, lr=0.001):
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-
-    X_train_tensor = torch.FloatTensor(X_train)
-    
-    model.train()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     for epoch in range(epochs):
+        model.train()
+        output = model(data)
+        loss = criterion(output, data)
         optimizer.zero_grad()
-        output = model(X_train_tensor)
-        loss = criterion(output, X_train_tensor)
         loss.backward()
         optimizer.step()
-    
     return model
 
+# Ensemble training
+def train_ensemble(num_models, input_dim, data):
+    ensemble = []
+    for i in range(num_models):
+        model = Autoencoder(input_dim)
+        trained = train_autoencoder(model, data)
+        ensemble.append(trained)
+    return ensemble
 
-# Calculate reconstruction error
-def compute_errors(model, X):
+# Compute reconstruction errors
+def compute_errors(model, data):
     model.eval()
     with torch.no_grad():
-        X_tensor = torch.FloatTensor(X)
-        output = model(X_tensor)
-        mse = ((X_tensor - output) ** 2).mean(dim=1).numpy()
-    return mse
+        reconstructed = model(data)
+        errors = torch.mean((reconstructed - data) ** 2, dim=1)
+    return errors.cpu().numpy()
 
+# Ensemble prediction based on average error
+def ensemble_predict(models, data, threshold):
+    all_errors = np.array([compute_errors(m, data) for m in models])
+    avg_error = np.mean(all_errors, axis=0)
+    return (avg_error > threshold).astype(int)
 
-# Ensemble logic (majority vote)
-def ensemble_predict(models, X, threshold):
-    votes = []
-    for model in models:
-        errors = compute_errors(model, X)
-        vote = (errors > threshold).astype(int)
-        votes.append(vote)
-    
-    votes = np.array(votes)
-    predictions = (votes.sum(axis=0) >= (len(models) // 2 + 1)).astype(int)
-    return predictions
+# Train the ensemble
+input_dim = X_train.shape[1]
+ensemble_models = train_ensemble(num_models=3, input_dim=input_dim, data=X_train_tensor)
 
+# Get average reconstruction errors for training data (normal only)
+train_errors = np.mean([compute_errors(m, X_train_tensor) for m in ensemble_models], axis=0)
 
-# Main
-(X_train, X_test, y_train, y_test), scaler = load_data()
+# Set threshold (adjust to trade off precision/recall)
+threshold = np.percentile(train_errors, 97)  # Make stricter for better precision
 
-# Train on only normal data
-X_train_normal = X_train[y_train == 0]
+# Predict on test set
+y_pred = ensemble_predict(ensemble_models, X_test_tensor, threshold)
 
-# Create ensemble of 3 autoencoders
-ensemble_models = [
-    train_autoencoder(X_train_normal, input_dim=X_train.shape[1], hidden_dim=8),
-    train_autoencoder(X_train_normal, input_dim=X_train.shape[1], hidden_dim=10),
-    train_autoencoder(X_train_normal, input_dim=X_train.shape[1], hidden_dim=12)
-]
-
-# Use one model to decide threshold
-errors = compute_errors(ensemble_models[0], X_train_normal)
-threshold = np.percentile(errors, 95)  # Adjust for sensitivity
-
-# Predict
-y_pred = ensemble_predict(ensemble_models, X_test, threshold)
-
-# Evaluation
+# Report
 print(classification_report(y_test, y_pred, target_names=["Normal", "Anomaly"]))
+
 
